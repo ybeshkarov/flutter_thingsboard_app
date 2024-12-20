@@ -22,6 +22,14 @@ platform :android do
     Dir.chdir("..")
     sh("fvm flutter test -r expanded --coverage")
   end
+  
+  desc "Build "
+  lane :build do |options|
+      Dir.chdir("..")
+      Dir.chdir("..")
+      # Building with Flutter
+      sh("fvm flutter", "build", "apk", "--build-number", options[:build_number], "--build-name=" + options[:build_name], "--no-pub")
+  end
 
   desc "Submit a new Beta Build to Crashlytics Beta"
   lane :beta do
