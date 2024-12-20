@@ -5,7 +5,12 @@
     
     
       
-      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.00017">
+      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.000215">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="1: fvm flutter test -r expanded --coverage" time="11.600256">
         
       </testcase>
     
