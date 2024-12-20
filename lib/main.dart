@@ -77,7 +77,7 @@ class ThingsboardApp extends StatelessWidget {
           ],
           supportedLocales: S.supportedLocales,
           title: 'ThingsBoard CE App',
-          onGenerateTitle: ( context) => S.of(context).appTitle,
+          onGenerateTitle: (context) => S.of(context).appTitle,
           themeMode: ThemeMode.light,
           theme: tbTheme,
           darkTheme: tbDarkTheme,

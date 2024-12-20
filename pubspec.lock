@@ -1538,10 +1538,11 @@ packages:
   thingsboard_client:
     dependency: "direct main"
     description:
-      name: thingsboard_client
-      sha256: "86c7178f1b7c0d5204e58f685ee3295cfc49a596eb461f6ae3b97e4173f0456e"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: dev
+      resolved-ref: de8019917d4c5e14c81e544df528b88d1a3253f3
+      url: "git@github.com:thingsboard/dart_thingsboard_client.git"
+    source: git
     version: "2.0.0"
   timeago:
     dependency: "direct main"
