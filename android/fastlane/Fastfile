@@ -28,7 +28,7 @@ platform :android do
       Dir.chdir("..")
       Dir.chdir("..")
       # Building with Flutter
-      sh("fvm flutter", "build", "apk", "--build-number", options[:build_number], "--build-name=" + options[:build_name], "--no-pub")
+      sh("fvm", "flutter", "build", "apk", "--build-number", options[:build_number], "--build-name=", options[:build_name], "--no-pub")
   end
 
   desc "Submit a new Beta Build to Crashlytics Beta"
