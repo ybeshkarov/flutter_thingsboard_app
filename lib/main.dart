@@ -66,6 +66,7 @@ class ThingsboardApp extends StatelessWidget {
           orientation: MediaQuery.of(context).orientation,
         );
 
+        // test
         return MaterialApp(
           scaffoldMessengerKey:
               getIt<ThingsboardAppRouter>().tbContext.messengerKey,
