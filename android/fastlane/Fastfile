@@ -27,7 +27,7 @@ platform :android do
   lane :build do |options|
       # Building with Flutter
       sh("fvm", "flutter", "build", "apk", "--build-number", options[:build_number],
-      "--build-name=" + options[:build_name], "--no-pub", "--no-tree-shake-icons ")
+      "--build-name=" + options[:build_name], "--no-pub", "--no-tree-shake-icons")
   end
 
   desc "Submit a new Beta Build to Crashlytics Beta"
