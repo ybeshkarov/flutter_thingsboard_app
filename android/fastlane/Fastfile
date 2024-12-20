@@ -25,6 +25,7 @@ platform :android do
   
   desc "Build "
   lane :build do |options|
+      sh("fvm", "flutter", "pub", "get")
       # Building with Flutter
       sh("fvm", "flutter", "build", "apk", "--build-number", options[:build_number],
       "--build-name=" + options[:build_name], "--no-pub", "--no-tree-shake-icons")
