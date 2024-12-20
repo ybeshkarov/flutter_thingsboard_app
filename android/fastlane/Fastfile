@@ -18,6 +18,8 @@ default_platform(:android)
 platform :android do
   desc "Runs all the tests"
   lane :test do
+    Dir.chdir("..")
+    Dir.chdir("..")
     sh("fvm flutter test -r expanded --coverage")
   end
   
