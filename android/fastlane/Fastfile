@@ -25,10 +25,9 @@ platform :android do
   
   desc "Build "
   lane :build do |options|
-      Dir.chdir("..")
-      Dir.chdir("..")
       # Building with Flutter
-      sh("fvm", "flutter", "build", "apk", "--build-number", options[:build_number], "--build-name=" + options[:build_name], "--no-pub")
+      sh("fvm", "flutter", "build", "apk", "--build-number", options[:build_number],
+      "--build-name=" + options[:build_name], "--no-pub", "--no-tree-shake-icons ")
   end
 
   desc "Submit a new Beta Build to Crashlytics Beta"
