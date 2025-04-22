@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gen/gen_l10n/messages.dart';
 import 'package:thingsboard_app/core/auth/noauth/presentation/widgets/endpoint_name_widget.dart';
+import 'package:thingsboard_app/core/bloc/core_bloc.dart'
+    show CoreBloc, CoreEventLogout;
 import 'package:thingsboard_app/core/context/tb_context.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
 import 'package:thingsboard_app/core/usecases/user_details_usecase.dart';
+import 'package:thingsboard_app/features/alarm/presentation/widgets/assignee/user_info_avatar_widget.dart';
 import 'package:thingsboard_app/locator.dart';
-import 'package:thingsboard_app/modules/alarm/presentation/widgets/assignee/user_info_avatar_widget.dart';
 import 'package:thingsboard_app/modules/main/main_navigation_item.dart';
 import 'package:thingsboard_app/modules/more/more_menu_item_widget.dart';
+import 'package:thingsboard_app/services/endpoint/i_endpoint_service.dart';
+import 'package:thingsboard_app/services/mobile/i_mobile_service.dart';
+import 'package:thingsboard_app/services/notification_service.dart';
+import 'package:thingsboard_app/services/user/i_user_service.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
-import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart';
-import 'package:thingsboard_app/utils/services/layouts/i_layout_service.dart';
-import 'package:thingsboard_app/utils/services/notification_service.dart';
 import 'package:thingsboard_app/utils/ui/tb_text_styles.dart';
 import 'package:thingsboard_app/utils/ui/ui_utils.dart';
 
@@ -23,13 +27,22 @@ class MorePage extends TbContextWidget {
 }
 
 class _MorePageState extends TbContextState<MorePage> {
+  late final ({
+    String? firstName,
+    String? lastName,
+    String? email
+  }) userPersonalInfo;
+
+  // I know it's bad
+  late final IUserService userService;
+
   @override
   Widget build(BuildContext context) {
     final userDetails = getIt<UserDetailsUseCase>()(
       UserDetailsParams(
-        firstName: tbContext.userDetails?.firstName ?? '',
-        lastName: tbContext.userDetails?.lastName ?? '',
-        email: tbContext.userDetails?.email ?? '',
+        firstName: userPersonalInfo.firstName ?? '',
+        lastName: userPersonalInfo.lastName ?? '',
+        email: userPersonalInfo.email ?? '',
       ),
     );
 
@@ -118,9 +131,7 @@ class _MorePageState extends TbContextState<MorePage> {
                 ),
                 color: const Color(0xffD12730),
                 onTap: () {
-                  tbContext.logout(
-                    requestConfig: RequestConfig(ignoreErrors: true),
-                  );
+                  context.read<CoreBloc>().add(const CoreEventLogout());
                 },
               ),
             ],
@@ -131,7 +142,7 @@ class _MorePageState extends TbContextState<MorePage> {
   }
 
   Widget buildMoreMenuItems(BuildContext context) {
-    final items = getIt<ILayoutService>().getMorePageItems(tbContext, context);
+    final items = getIt<IMobileService>().getMorePageItems(tbContext, context);
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -152,29 +163,24 @@ class _MorePageState extends TbContextState<MorePage> {
   }
 
   String _getAuthorityName(BuildContext context) {
-    var user = tbContext.userDetails;
-    var name = '';
-    if (user != null) {
-      var authority = user.authority;
-      switch (authority) {
-        case Authority.SYS_ADMIN:
-          name = S.of(context).systemAdministrator;
-          break;
-        case Authority.TENANT_ADMIN:
-          name = S.of(context).tenantAdministrator;
-          break;
-        case Authority.CUSTOMER_USER:
-          name = S.of(context).customer;
-          break;
-        default:
-          break;
-      }
+    switch (userService.getAuthority()) {
+      case Authority.SYS_ADMIN:
+        return S.of(context).systemAdministrator;
+
+      case Authority.TENANT_ADMIN:
+        return S.of(context).tenantAdministrator;
+
+      case Authority.CUSTOMER_USER:
+        return S.of(context).customer;
+      default:
+        return '';
     }
-    return name;
   }
 
   @override
   void initState() {
+    userService = getIt();
+    userPersonalInfo = userService.getUserDetails();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService(tbClient, widget.log, tbContext)
           .updateNotificationsCount();

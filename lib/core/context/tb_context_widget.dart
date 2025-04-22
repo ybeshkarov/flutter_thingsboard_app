@@ -43,14 +43,6 @@ abstract class TbContextState<T extends TbContextWidget> extends State<T>
   }
 }
 
-mixin TbMainState {
-  bool canNavigate(String path);
-
-  navigateToPath(String path);
-
-  bool isHomePage();
-}
-
 abstract class TbPageWidget extends TbContextWidget {
   TbPageWidget(TbContext tbContext, {Key? key}) : super(tbContext, key: key);
 }
@@ -78,7 +70,8 @@ abstract class TbPageState<W extends TbPageWidget> extends TbContextState<W>
 
   @override
   void didPopNext() {
-    hideNotification();
+    // TODO rework, delete this class at all, create a new navigator observer with logs and possibility to hide toast notifications
+    // hideNotification();
     setupCurrentState(this);
   }
 }

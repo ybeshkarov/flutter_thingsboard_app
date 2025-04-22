@@ -4,20 +4,22 @@ import 'package:flutter_gen/gen_l10n/messages.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:thingsboard_app/core/context/tb_context.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
+import 'package:thingsboard_app/locator.dart';
 import 'package:thingsboard_app/modules/profile/change_password_page.dart';
+import 'package:thingsboard_app/services/user/i_user_service.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
+import 'package:thingsboard_app/utils/ui/tost_notifications_extension.dart';
 import 'package:thingsboard_app/widgets/tb_app_bar.dart';
 import 'package:thingsboard_app/widgets/tb_progress_indicator.dart';
 
 class ProfilePage extends TbPageWidget {
-  final bool _fullscreen;
-
   ProfilePage(
     TbContext tbContext, {
     bool fullscreen = false,
     super.key,
   })  : _fullscreen = fullscreen,
         super(tbContext);
+  final bool _fullscreen;
 
   @override
   State<StatefulWidget> createState() => _ProfilePageState();
@@ -41,7 +43,6 @@ class _ProfilePageState extends TbPageState<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: TbAppBar(
-        tbContext,
         title: const Text('Profile'),
         actions: [
           IconButton(
@@ -169,18 +170,24 @@ class _ProfilePageState extends TbPageState<ProfilePage> {
         try {
           _currentUser =
               await tbClient.getUserService().saveUser(_currentUser!);
-          tbContext.userDetails = _currentUser;
+          getIt<IUserService>().setUser(
+            _currentUser!,
+            authUser: tbClient.getAuthUser()!,
+          );
           _setUser();
           await Future.delayed(const Duration(milliseconds: 300));
           _isLoadingNotifier.value = false;
-          showSuccessNotification(
-            S.of(context).profileSuccessNotification,
-            duration: const Duration(milliseconds: 1500),
-          );
-          showSuccessNotification(
-            S.of(context).profileSuccessNotification,
-            duration: const Duration(milliseconds: 1500),
-          );
+          if (mounted) {
+            context.showSuccessNotification(
+              S.of(context).profileSuccessNotification,
+              duration: const Duration(milliseconds: 1500),
+            );
+
+            context.showSuccessNotification(
+              S.of(context).profileSuccessNotification,
+              duration: const Duration(milliseconds: 1500),
+            );
+          }
         } catch (_) {
           _isLoadingNotifier.value = false;
         }
@@ -191,8 +198,8 @@ class _ProfilePageState extends TbPageState<ProfilePage> {
   _changePassword() async {
     var res = await tbContext
         .showFullScreenDialog<bool>(ChangePasswordPage(tbContext));
-    if (res == true) {
-      showSuccessNotification(
+    if (res == true && mounted) {
+      context.showSuccessNotification(
         S.of(context).passwordSuccessNotification,
         duration: const Duration(milliseconds: 1500),
       );

@@ -8,22 +8,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:thingsboard_app/constants/enviroment_variables.dart';
-import 'package:thingsboard_app/core/auth/oauth2/app_secret_provider.dart';
-import 'package:thingsboard_app/core/auth/oauth2/tb_oauth2_client.dart';
 import 'package:thingsboard_app/core/context/tb_context_widget.dart';
-import 'package:thingsboard_app/core/logger/tb_logger.dart';
+import 'package:thingsboard_app/features/dashboard/domain/entites/dashboard_arguments.dart';
 import 'package:thingsboard_app/locator.dart';
-import 'package:thingsboard_app/modules/dashboard/domain/entites/dashboard_arguments.dart';
-import 'package:thingsboard_app/modules/version/route/version_route.dart';
-import 'package:thingsboard_app/modules/version/route/version_route_arguments.dart';
+import 'package:thingsboard_app/services/endpoint/i_endpoint_service.dart';
+import 'package:thingsboard_app/services/firebase/i_firebase_service.dart';
+import 'package:thingsboard_app/services/local_database/i_local_database_service.dart';
+import 'package:thingsboard_app/services/logger/i_logger_service.dart';
+import 'package:thingsboard_app/services/notification_service.dart';
+import 'package:thingsboard_app/services/toast_notification/i_toast_notification_service.dart';
+import 'package:thingsboard_app/services/widget_action_handler.dart';
 import 'package:thingsboard_app/thingsboard_client.dart';
-import 'package:thingsboard_app/utils/services/endpoint/i_endpoint_service.dart';
-import 'package:thingsboard_app/utils/services/firebase/i_firebase_service.dart';
-import 'package:thingsboard_app/utils/services/layouts/i_layout_service.dart';
-import 'package:thingsboard_app/utils/services/local_database/i_local_database_service.dart';
-import 'package:thingsboard_app/utils/services/notification_service.dart';
-import 'package:thingsboard_app/utils/services/widget_action_handler.dart';
-import 'package:toastification/toastification.dart';
 import 'package:universal_platform/universal_platform.dart';
 
 part 'has_tb_context.dart';
@@ -31,17 +26,18 @@ part 'has_tb_context.dart';
 enum NotificationType { info, warn, success, error }
 
 class TbContext implements PopEntry {
+  TbContext(this.router) {
+    _widgetActionHandler = WidgetActionHandler(this);
+  }
+
   static final deviceInfoPlugin = DeviceInfoPlugin();
   bool isUserLoaded = false;
   final _isAuthenticated = ValueNotifier<bool>(false);
   late PlatformType platformType;
   List<TwoFaProviderInfo>? twoFactorAuthProviders;
-  User? userDetails;
-  HomeDashboardInfo? homeDashboard;
-  VersionInfo? versionInfo;
-  StoreInfo? storeInfo;
+
   final _isLoadingNotifier = ValueNotifier<bool>(false);
-  final _log = TbLogger();
+  final _log = getIt<ILoggerService>();
   late final WidgetActionHandler _widgetActionHandler;
   AndroidDeviceInfo? androidInfo;
   IosDeviceInfo? iosInfo;
@@ -67,7 +63,6 @@ class TbContext implements PopEntry {
   }
 
   late ThingsboardClient tbClient;
-  late TbOAuth2Client oauth2Client;
 
   final FluroRouter router;
   final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
@@ -78,11 +73,7 @@ class TbContext implements PopEntry {
 
   TbContextState? currentState;
 
-  TbContext(this.router) {
-    _widgetActionHandler = WidgetActionHandler(this);
-  }
-
-  TbLogger get log => _log;
+  ILoggerService get log => _log;
 
   WidgetActionHandler get widgetActionHandler => _widgetActionHandler;
 
@@ -103,11 +94,6 @@ class TbContext implements PopEntry {
       onLoadFinished: onLoadFinished,
       computeFunc: <Q, R>(callback, message) => compute(callback, message),
       debugMode: EnvironmentVariables.apiCalls || EnvironmentVariables.verbose,
-    );
-
-    oauth2Client = TbOAuth2Client(
-      tbContext: this,
-      appSecretProvider: AppSecretProvider.local(),
     );
 
     try {
@@ -157,11 +143,6 @@ class TbContext implements PopEntry {
       debugMode: EnvironmentVariables.apiCalls || EnvironmentVariables.verbose,
     );
 
-    oauth2Client = TbOAuth2Client(
-      tbContext: this,
-      appSecretProvider: AppSecretProvider.local(),
-    );
-
     await tbClient.init();
   }
 
@@ -176,84 +157,8 @@ class TbContext implements PopEntry {
 
   void onError(ThingsboardError tbError) {
     log.error('onError', tbError, tbError.getStackTrace());
-    showErrorNotification(tbError.message!);
-  }
-
-  void showErrorNotification(
-    String message, {
-    Duration? duration,
-  }) {
-    showNotification(
-      message,
-      NotificationType.error,
-      duration: duration,
-    );
-  }
-
-  void showInfoNotification(String message, {Duration? duration}) {
-    showNotification(message, NotificationType.info, duration: duration);
-  }
-
-  void showWarnNotification(String message, {Duration? duration}) {
-    showNotification(message, NotificationType.warn, duration: duration);
-  }
-
-  void showSuccessNotification(String message, {Duration? duration}) {
-    showNotification(message, NotificationType.success, duration: duration);
-  }
-
-  void showNotification(
-    String message,
-    NotificationType type, {
-    Duration? duration,
-  }) {
-    duration ??= const Duration(days: 1);
-    Color backgroundColor;
-    ToastificationType toastificationType;
-    switch (type) {
-      case NotificationType.info:
-        backgroundColor = const Color(0xFF323232);
-        toastificationType = ToastificationType.info;
-        break;
-      case NotificationType.warn:
-        backgroundColor = const Color(0xFFdc6d1b);
-        toastificationType = ToastificationType.warning;
-        break;
-      case NotificationType.success:
-        backgroundColor = const Color(0xFF008000);
-        toastificationType = ToastificationType.success;
-        break;
-      case NotificationType.error:
-        backgroundColor = const Color(0xFF800000);
-        toastificationType = ToastificationType.error;
-        break;
-    }
-
-    toastification.show(
-      type: toastificationType,
-      style: ToastificationStyle.fillColored,
-      primaryColor: backgroundColor,
-      backgroundColor: Colors.white,
-      alignment: Alignment.bottomCenter,
-      autoCloseDuration: duration,
-      title: Text(message, maxLines: 10, overflow: TextOverflow.ellipsis),
-      closeOnClick: false,
-      dragToClose: true,
-      showProgressBar: false,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x07000000),
-          blurRadius: 16,
-          offset: Offset(0, 16),
-          spreadRadius: 0,
-        ),
-      ],
-    );
-  }
-
-  void hideNotification() {
-    toastification.dismissAll();
+    // TODO rework
+    getIt<IToastNotificationService>().showErrorNotification(tbError.message!);
   }
 
   void onLoadStarted() {
@@ -272,76 +177,12 @@ class TbContext implements PopEntry {
         'TbContext.onUserLoaded: isAuthenticated=${tbClient.isAuthenticated()}',
       );
       isUserLoaded = true;
-      if (tbClient.isAuthenticated() && !tbClient.isPreVerificationToken()) {
-        log.debug('authUser: ${tbClient.getAuthUser()}');
-        if (tbClient.getAuthUser()!.userId != null) {
-          try {
-            final mobileInfo =
-                await tbClient.getMobileService().getUserMobileInfo(
-                      MobileInfoQuery(
-                        platformType: platformType,
-                        packageName: packageName,
-                      ),
-                    );
-            userDetails = mobileInfo?.user;
-            homeDashboard = mobileInfo?.homeDashboardInfo;
-            versionInfo = mobileInfo?.versionInfo;
-            storeInfo = mobileInfo?.storeInfo;
-            getIt<ILayoutService>().cachePageLayouts(
-              mobileInfo?.pages,
-              authority: tbClient.getAuthUser()!.authority,
-            );
-          } catch (e) {
-            log.error('TbContext::onUserLoaded error $e');
-            if (!_isConnectionError(e)) {
-              logout();
-            } else {
-              rethrow;
-            }
-          }
-        }
-      } else {
-        if (tbClient.isPreVerificationToken()) {
-          log.debug('authUser: ${tbClient.getAuthUser()}');
-          twoFactorAuthProviders = await tbClient
-              .getTwoFactorAuthService()
-              .getAvailableLoginTwoFaProviders();
-        } else {
-          twoFactorAuthProviders = null;
-        }
-
-        userDetails = null;
-        homeDashboard = null;
-        versionInfo = null;
-        storeInfo = null;
-      }
 
       _isAuthenticated.value =
           tbClient.isAuthenticated() && !tbClient.isPreVerificationToken();
-      if (versionInfo != null && versionInfo?.minVersion != null) {
-        if (version.versionInt() <
-            (versionInfo!.minVersion?.versionInt() ?? 0)) {
-          navigateTo(
-            VersionRoutes.updateRequiredRoutePath,
-            clearStack: true,
-            replace: true,
-            routeSettings: RouteSettings(
-              arguments: VersionRouteArguments(
-                versionInfo: versionInfo!,
-                storeInfo: storeInfo,
-              ),
-            ),
-          );
-          return;
-        }
-      }
 
       if (isAuthenticated) {
         onDone?.call();
-      }
-
-      if (_handleRootState) {
-        await updateRouteState();
       }
 
       if (isAuthenticated) {
@@ -421,7 +262,11 @@ class TbContext implements PopEntry {
     _handleRootState = true;
 
     if (getIt<IFirebaseService>().apps.isNotEmpty) {
-      await NotificationService(tbClient, log, this).logout();
+      try {
+        await NotificationService(tbClient, log, this).logout();
+      } catch (e) {
+        log.error('NotificationService::logout() error -> $e');
+      }
     }
 
     await tbClient.logout(
@@ -439,90 +284,6 @@ class TbContext implements PopEntry {
         e.message == 'Unable to connect';
   }
 
-  Future<void> updateRouteState() async {
-    log.debug(
-      'TbContext:updateRouteState() ${currentState != null && currentState!.mounted}',
-    );
-    if (currentState != null && currentState!.mounted) {
-      if (tbClient.isAuthenticated() && !tbClient.isPreVerificationToken()) {
-        final defaultDashboardId = _defaultDashboardId();
-        if (defaultDashboardId != null) {
-          bool fullscreen = _userForceFullscreen();
-          if (!fullscreen) {
-            await navigateToDashboard(defaultDashboardId, animate: false);
-            navigateTo(
-              '/main',
-              replace: true,
-              closeDashboard: false,
-              clearStack: true,
-              transition: TransitionType.none,
-            );
-          } else {
-            navigateTo(
-              '/fullscreenDashboard/$defaultDashboardId',
-              replace: true,
-              clearStack: true,
-              transition: TransitionType.fadeIn,
-            );
-          }
-        } else {
-          navigateTo(
-            '/main',
-            replace: true,
-            clearStack: true,
-            transition: TransitionType.fadeIn,
-            transitionDuration: const Duration(milliseconds: 750),
-          );
-        }
-      } else {
-        navigateTo(
-          '/login',
-          replace: true,
-          clearStack: true,
-          transition: TransitionType.fadeIn,
-          transitionDuration: const Duration(milliseconds: 750),
-        );
-      }
-    }
-  }
-
-  String? _defaultDashboardId() {
-    if (userDetails != null && userDetails!.additionalInfo != null) {
-      return userDetails!.additionalInfo!['defaultDashboardId'];
-    }
-    return null;
-  }
-
-  bool _userForceFullscreen() {
-    return tbClient.getAuthUser()!.isPublic! ||
-        (userDetails != null &&
-            userDetails!.additionalInfo != null &&
-            userDetails!.additionalInfo!['defaultDashboardFullscreen'] == true);
-  }
-
-  bool isPhysicalDevice() {
-    if (UniversalPlatform.isAndroid) {
-      return androidInfo!.isPhysicalDevice == true;
-    } else if (UniversalPlatform.isIOS) {
-      return iosInfo!.isPhysicalDevice;
-    } else {
-      return false;
-    }
-  }
-
-  String userAgent() {
-    String userAgent = 'Mozilla/5.0';
-    if (UniversalPlatform.isAndroid) {
-      userAgent +=
-          ' (Linux; Android ${androidInfo!.version.release}; ${androidInfo?.model})';
-    } else if (UniversalPlatform.isIOS) {
-      userAgent += ' (${iosInfo!.model})';
-    }
-    userAgent +=
-        ' AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36';
-    return userAgent;
-  }
-
   Future<dynamic> navigateTo(
     String path, {
     bool replace = false,
@@ -534,8 +295,6 @@ class TbContext implements PopEntry {
     RouteSettings? routeSettings,
   }) async {
     if (currentState != null) {
-      hideNotification();
-
       if (transition != TransitionType.nativeModal) {
         transition = TransitionType.none;
       } else if (transition == null) {
